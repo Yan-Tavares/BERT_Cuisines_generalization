@@ -1,0 +1,8 @@
+# Ignore all JSON files
+*.json
+
+# Ignore all ZIP files
+*.zip
+
+# Ignore model weights
+best_model.pt

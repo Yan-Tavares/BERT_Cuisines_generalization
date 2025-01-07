@@ -66,36 +66,31 @@ from nltk.stem import WordNetLemmatizer
 import string
 
 
-def preprocess_text(text):
-    stop_words = set(stopwords.words('english'))
-    lemmatizer = WordNetLemmatizer()
+submission_inpection = 16061 #  ####16060
+submission = prcessed_submissions[submission_inpection]
 
-    # Lowercase
-    text = text.lower()
-    # Remove punctuation and numbers
-    text = text.translate(str.maketrans('', '', string.punctuation + string.digits))
-    # Tokenize
-    words = word_tokenize(text)
-    # Remove stopwords and lemmatize
-    words = [lemmatizer.lemmatize(word) for word in words if word not in stop_words]
-    return ' '.join(words)
+# Classify the title
+title = submission['processed_title']
+title_class = classify_text(title, cuisine_labels)
+print(f"\nTitle: {title}")
+print(f"Title classification: {title_class}\n")
 
-sentence = "How about a vinaigrette and add feta, chickpeas, dill, cucumber, grape tomatoes?"
-processed_sentence = preprocess_text(sentence)
+# Classify the selftext
+selftext = submission['processed_selftext']
+selftext_class = classify_text(selftext, cuisine_labels)
 
-logits = predict_logits(processed_sentence)
-print(logits)
-predicted_class = classify_text(processed_sentence, cuisine_labels)
-print(f"Predicted class for the given sentence: {predicted_class}")
+print(f"Selftext: {selftext}")
+print(f"Selftext classification: {selftext_class}\n")
 
-submission_inpection = 16035 # Interesting ones : 16002 , 16003, 16008, 16009
-combined_text = prcessed_submissions[submission_inpection]['processed_title'] + " " + prcessed_submissions[submission_inpection]['processed_selftext'] + " " + " ".join(prcessed_submissions[submission_inpection]['processed_comments'])
+# Classify each comment
+for i, comment in enumerate(submission['processed_comments']):
+    print(f"Comment {i+1}: {comment}")
+    comment_class = classify_text(comment, cuisine_labels)
+    print(f"Classification: {comment_class}\n")
 
-print(f"Submission {submission_inpection} title:\n {prcessed_submissions[submission_inpection]['title']}")
-print(f"Submission {submission_inpection} comments:\n {prcessed_submissions[submission_inpection]['comments']}")
 
-logits = predict_logits(combined_text)
-probabilities = F.softmax(logits, dim=-1)
-
-for cuisine, prob in zip(cuisine_labels.keys(), probabilities[0]):
-    print(f"{cuisine}: {prob:.4f}")
+# Test a specific sentence
+sentence = "if I add grated parm to my deep fried mac n cheese balls will they burn?"
+sentence_class = classify_text(sentence, cuisine_labels)
+print(f"Specific sentence: {sentence}")
+print(f"Specific sentence classification: {sentence_class}\n")

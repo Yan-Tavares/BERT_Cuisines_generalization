@@ -5,7 +5,7 @@ logging.set_verbosity_error() # To supress the warning message for fine tuning
 
 ####################
 # Load sentences_dict from the JSON file
-with open('sentences_dict.json', 'r') as f:
+with open('data_preprocess/sentences_dict.json', 'r') as f:
     sentences_dict = json.load(f)
 
 from transformers import BertTokenizer
@@ -194,5 +194,5 @@ train_model_with_validation(
     criterion=criterion,
     device=device,
     num_epochs=3,
-    patience=1
+    patience=3
 )

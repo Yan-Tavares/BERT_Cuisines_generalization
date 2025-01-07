@@ -187,24 +187,24 @@ print(f"Joined {len(joined_submissions)} submissions.")
 # Preprocess the text data
 ###################################
 
-# nltk.download('punkt')
-# nltk.download('stopwords')
-# nltk.download('wordnet')
-# nltk.download('punkt_tab') # Download the missing punkt_tab data
-
 def preprocess_text(text):
-    stop_words = set(stopwords.words('english'))
-    lemmatizer = WordNetLemmatizer()
+    # stop_words = set(stopwords.words('english'))
+    # lemmatizer = WordNetLemmatizer()
+    
+    # # Lowercase
+    # text = text.lower()
+    # # Remove punctuation and numbers
+    # text = text.translate(str.maketrans('', '', string.punctuation + string.digits))
+    # # Tokenize
+    # words = word_tokenize(text)
+    # # Remove stopwords and lemmatize
+    # words = [lemmatizer.lemmatize(word) for word in words if word not in stop_words]
 
-    # Lowercase
-    text = text.lower()
-    # Remove punctuation and numbers
-    text = text.translate(str.maketrans('', '', string.punctuation + string.digits))
-    # Tokenize
-    words = word_tokenize(text)
-    # Remove stopwords and lemmatize
-    words = [lemmatizer.lemmatize(word) for word in words if word not in stop_words]
-    return ' '.join(words)
+    # output = ' '.join(words)
+
+    output = text
+
+    return output
 
 
 ###################################
@@ -219,10 +219,15 @@ for sub in joined_submissions:
 for sub in joined_submissions:
     sub['processed_selftext'] = sub['selftext'] if sub['selftext'] not in ['removed', 'deleted','[removed]', '[deleted]'] else ''
 
+# Remove all comments that have less than 10 words
+min_words = 10
+for sub in joined_submissions:
+    sub['processed_comments'] = [comment for comment in sub['processed_comments'] if len(("word one"+ comment).split()) >= min_words+2]
+    # Add a dummy word to the comment to account for the case where the comment is a single word
+
 # Remove submissions with no comments
 joined_submissions = [sub for sub in joined_submissions if len(sub['processed_comments']) != 0]
 print(f"Submissions with comments: {len(joined_submissions)} ")
-
 
 # Apply preprocessing
 count = 0

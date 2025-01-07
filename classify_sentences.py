@@ -34,13 +34,6 @@ def cuisine_probs(text):
     probs = torch.nn.functional.softmax(logits, dim=1).to('cpu')
     return probs
 
-# def classify_cuisine(text,cuisine_labels):
-#     probs = cuisine_probs(text)
-#     predicted_number = torch.argmax(probs, dim=1).item()
-
-#     predicted_class = list(cuisine_labels.keys())[predicted_number]
-#     return predicted_class
-
 #############################
 # Emotion Prediction Function
 #############################
@@ -54,11 +47,7 @@ def get_emotions(text):
     
     # Apply softmax to get probabilities
     outputs = torch.softmax(outputs.logits, dim=1).detach()[0].unsqueeze(0).to('cpu')
-
-    # Map emotion IDs to labels and scores
-    # emotion_labels = model.config.id2label
-    # emotion_scores = {emotion_labels[i]: float(probabilities[i]) for i in range(len(probabilities))}
-    
+ 
     return outputs
 
 if __name__ == "__main__":
@@ -86,31 +75,52 @@ if __name__ == "__main__":
     BERT_cuisine.to(device)
 
     #############################
+    # Create a dictionary to store classified sentences per cuisine
+    #############################
+
+    classified_sentences_dict = {}
+    for cuisine in cuisine_labels:
+        classified_sentences_dict[cuisine] = {'sentences emotions': []}
+
+    def get_cuisine_emotions_and_store(text):
+        # Classify the title
+        text_cuisine_index = torch.argmax(cuisine_probs(text)).item()
+        text_cuisine = list(cuisine_labels.keys())[text_cuisine_index]
+        text_emotions = get_emotions(text).squeeze().tolist()
+
+        classified_sentences_dict[text_cuisine]['sentences emotions'].append(text_emotions)
+
+    #############################
     # Compute cuisines probabilities and sentiment scores for submissions
     #############################
+
     print(f"Total submissions: {len(submissions_dict)}")
 
     counter = 0
-    list_of_classified_submissions = []
     for sub in submissions_dict:
-        classified_submission = {}
 
         print(f"Processing submission {counter}", end="\r")
 
-        combined_comments = " ".join(sub['processed_comments'])
-        combined_text = sub['processed_title'] + " " + sub['processed_selftext'] + " " + combined_comments
+        title = sub['processed_title']
+        selftext = sub['processed_selftext']
+        comments = sub['processed_comments']
 
-        classified_submission['id'] = sub['id']
-        classified_submission['class'] = torch.argmax(cuisine_probs(combined_text)).item()
-        classified_submission['emotion_probs'] = get_emotions(combined_text).squeeze().tolist()
+        # Classify and store the title
+        get_cuisine_emotions_and_store(title)
 
-        list_of_classified_submissions.append(classified_submission)
+        # Classify and store the selftext if not empty
+        if selftext != '':
+            get_cuisine_emotions_and_store(selftext)
+
+        # Classify the comments
+        for comment in comments:
+            get_cuisine_emotions_and_store(comment)
+
         counter += 1
 
-        # if counter == 1000:
-        #     break
+        if counter == 100:
+            break
 
     print("\nDone.")
-
-    with open('results/classified_submissions.json', 'w') as f:
-        json.dump(list_of_classified_submissions, f)
+    with open('results/classified_sentences.json', 'w') as f:
+        json.dump(classified_sentences_dict, f)

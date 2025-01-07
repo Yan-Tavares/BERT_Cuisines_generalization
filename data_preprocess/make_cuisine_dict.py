@@ -1,45 +1,9 @@
-import ndjson
 import json
 import nltk
-from nltk.corpus import stopwords
-from nltk.tokenize import word_tokenize
-from nltk.stem import WordNetLemmatizer
-import string
-import torch
-
-
-
-def preprocess_text(text):
-    stop_words = set(stopwords.words('english'))
-    lemmatizer = WordNetLemmatizer()
-
-    # Lowercase
-    text = text.lower()
-    # Remove punctuation and numbers
-    text = text.translate(str.maketrans('', '', string.punctuation + string.digits))
-    # Tokenize
-    words = word_tokenize(text)
-    # Remove stopwords and lemmatize
-    words = [lemmatizer.lemmatize(word) for word in words if word not in stop_words]
-    return ' '.join(words)
-
-
-"""#**RQ 3**
-
-- Pull wikpidea articles describing the cuisine, take also another article descrining how to make the 10 most popular foods from that cuisine.
-- Preprocess the articles, chop them in sentences, label as the cuisine
-- Dowload a pre-trained uncased BERT with a softmax at the end to perform the classification
-- Use the text pieces and their label to perform the training of the FC layer
-- Dowload a version of BERT that can perform sentiment alysis.
-- Apply the submissions to BERT Cuisines and classify which cuisine the submission refers to
-- Appply the same submission to BERT Sentiment and classify the sentiment score
-- Group the sentment scores per cuisine.
-- Average all the scores --> Sentiment per cuisine based on reddit
-"""
-
 import wikipediaapi
 import re
 import nltk
+
 # nltk.download('punkt')
 
 # Set the custom user-agent header
@@ -94,7 +58,7 @@ french_articles = {title: fetch_article(title) for title in french_titles}
 articles_dict['French'] = french_articles
 
 # 3 American articles:
-american_titles = ["American cuisine", "Cuisine of California","Cuisine of New England","Cuisine of the Southern United States" ]#,"Cuisine of California","Cuisine of New England","Cuisine of the Southern United States" ,"Hamburger", "Hot dog", "BBQ", "Mac and cheese", "Fried chicken"]
+american_titles = ["American cuisine", "Cuisine of California","Cuisine of New England","Cuisine of the Southern United States","Cuisine of the Southwestern United States"]#,"Cuisine of California","Cuisine of New England","Cuisine of the Southern United States" ,"Hamburger", "Hot dog", "BBQ", "Mac and cheese", "Fried chicken"]
 american_articles = {title: fetch_article(title) for title in american_titles}
 articles_dict['American'] = american_articles
 
@@ -114,7 +78,7 @@ greek_articles = {title: fetch_article(title) for title in greek_titles}
 articles_dict['Greek'] = greek_articles
 
 # 7 Indian articles:
-indian_titles = ["Indian cuisine","List of Indian dishes","Arunachali cuisine","Assamese cuisine"]#, "Biryani", "Butter chicken", "Samosa", "Tandoori", "Rogan josh", "Chole bhature"]
+indian_titles = ["Indian cuisine","List of Indian dishes","Cuisine of Haryana","Arunachali cuisine","Assamese cuisine"]#, "Biryani", "Butter chicken", "Samosa", "Tandoori", "Rogan josh", "Chole bhature"]
 indian_articles = {title: fetch_article(title) for title in indian_titles}
 articles_dict['Indian'] = indian_articles
 
@@ -134,7 +98,7 @@ chinese_articles = {title: fetch_article(title) for title in chinese_titles}
 articles_dict['Chinese'] = chinese_articles
 
 # Unknow cuisines and not cuisine specific articles:
-unknown_titles = ["Cooking","Vietnamese cuisine", "Philippine cuisine", "Dutch cuisine", "Australian cuisine", "Korean cuisine", "Brazilian cuisine", "Turkish cuisine", "Russian cuisine", "German cuisine", "British cuisine", "Swedish cuisine"]
+unknown_titles = ["Cooking","Outline of food preparation","Meal","Vietnamese cuisine", "Philippine cuisine", "Dutch cuisine", "Australian cuisine", "Korean cuisine", "Brazilian cuisine", "Turkish cuisine", "Russian cuisine", "German cuisine", "British cuisine", "Swedish cuisine"]
 unknown_articles = {title: fetch_article(title) for title in unknown_titles}
 articles_dict['Unknown'] = unknown_articles
 
@@ -146,10 +110,6 @@ for cuisine, articles in articles_dict.items():
         # Split the article text into sentence pairs, each element of sentences is two sentences combined
         sentences = split_into_sentence_pairs(article_text)
         
-        # Preprocess each sentence
-        for i in range(len(sentences)):
-            sentences[i] = preprocess_text(sentences[i])
-
         # Add the processed sentences to the cuisine's list
         sentences_dict[cuisine].extend(sentences)
 
