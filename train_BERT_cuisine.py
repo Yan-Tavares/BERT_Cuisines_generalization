@@ -3,41 +3,35 @@ import torch
 from transformers import logging
 logging.set_verbosity_error() # To supress the warning message for fine tuning
 
-####################
-# Load sentences_dict from the JSON file
-with open('sentences_dict.json', 'r') as f:
-    sentences_dict = json.load(f)
+
+###############################
+# Load cuisine sentences dictionary
+###############################
+
+with open('data_preprocess/cuisine_sentences_dict.json', 'r', encoding='utf-8') as f:
+    cuisine_sentences_dict = json.load(f)
 
 from transformers import BertTokenizer
 from torch.utils.data import DataLoader, TensorDataset
 import torch
 
-# Load the pre-trained BERT tokenizer
-tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+# Get the cuisine labels from the keys of the sentences_dict
+cuisine_labels = {cuisine: i for i, cuisine in enumerate(cuisine_sentences_dict.keys())}
 
-# Map cuisines to numerical labels
-cuisine_labels = {
-    "Italian": 0,
-    "French": 1,
-    "American": 2,
-    "Mexican": 3,
-    "Thai": 4,
-    "Greek": 5,
-    "Indian": 6,
-    "Japanese": 7,
-    "Spanish": 8,
-    "Chinese": 9,
-    "Unknown": 10,
-}
+###############################
+# Tokenize using BERT tokenizer
+###############################
 
 # Prepare lists to store inputs and labels
 all_input_ids = []
 all_attention_masks = []
 all_labels = []
 
-# Tokenize and process sentences
+# Load the pre-trained BERT tokenizer
+tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
 max_length = 128
-for cuisine, sentences in sentences_dict.items():
+
+for cuisine, sentences in cuisine_sentences_dict.items():
 
     '''
     Go cuisine by cuisine and:
@@ -75,11 +69,12 @@ input_ids = torch.cat(all_input_ids, dim=0)
 attention_masks = torch.cat(all_attention_masks, dim=0)
 labels = torch.tensor(all_labels)
 
+###############################
+# Create the dataloader
+###############################
 
 # Put all the tensors in a TensorDataset
 dataset = TensorDataset(input_ids, attention_masks, labels)
-
-from torch.utils.data import random_split
 
 # Assume `dataset` is the original TensorDataset used in the DataLoader
 dataset_size = len(dataset)
@@ -88,29 +83,33 @@ validation_size = int(validation_split * dataset_size)
 train_size = dataset_size - validation_size
 
 # Split the dataset
+from torch.utils.data import random_split
 train_dataset, val_dataset = random_split(dataset, [train_size, validation_size])
 
 # Create DataLoaders for training and validation
 batch_size = 20
-
 train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 
 print(f"Training samples: {len(train_dataset)}")
 print(f"Validation samples: {len(val_dataset)}")
 
+###############################
+# Load BERT model
+###############################
 from transformers import BertForSequenceClassification, AdamW
 import torch.nn as nn
 
-
-# Define tokenizer and model
-model = BertForSequenceClassification.from_pretrained("bert-base-uncased", num_labels=len(sentences_dict))
-
+model = BertForSequenceClassification.from_pretrained("bert-base-uncased", num_labels=len(cuisine_sentences_dict))
 criterion = nn.CrossEntropyLoss()
 optimizer = AdamW(model.parameters(), lr=2e-5)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Device: {device}")
+
+###############################
+# Training functions
+###############################
 
 def validate_model(model, val_dataloader, device):
     model.eval()
@@ -133,12 +132,19 @@ def validate_model(model, val_dataloader, device):
 
     return avg_loss, accuracy
 
-def train_model_with_validation(
-    model, train_dataloader, val_dataloader, optimizer, criterion, device, num_epochs=10, patience=3
-):
+def train_model_with_validation(model, train_dataloader, val_dataloader, optimizer, criterion, device, num_epochs=10, patience=3):
+    
     model.to(device)
     best_val_loss = float("inf")
     patience_counter = 0
+    
+    epoch_batches = len(train_dataloader)
+
+    training_batch_losses = []
+    validation_losses = []
+    val_accuracies = []
+    batch_val = []
+    batch_train = []
 
     early_stopping = False
     for epoch in range(num_epochs):
@@ -164,11 +170,19 @@ def train_model_with_validation(
             loss.backward()
             optimizer.step()
 
-            print(f"\rProcessing batch {batch_idx + 1}/{len(train_dataloader)} - Batch Loss: {loss.item():.4f}", end='')
+            training_batch_losses.append(loss.item())
+            batch_train.append(epoch* epoch_batches + batch_idx)
 
-            # Validate every 1/y of the epoch
-            if (batch_idx) % (len(train_dataloader) // 5) == 0:
+            print(f"\rProcessing batch {batch_idx + 1}/{epoch_batches} - Batch Loss: {loss.item():.4f}", end='')
+
+
+            # Validate every 50 batches
+            if (batch_idx) % (50) == 0:
                 val_loss, val_accuracy = validate_model(model, val_dataloader, device)
+                validation_losses.append(val_loss)
+                val_accuracies.append(val_accuracy)
+                batch_val.append(epoch* epoch_batches + batch_idx)
+
                 print(f"\nValidation Loss: {val_loss:.4f} | Validation Accuracy: {val_accuracy:.4f}\n")
 
                 # Check early stopping criteria
@@ -182,17 +196,36 @@ def train_model_with_validation(
                         print("Early stopping triggered.")
                         early_stopping = True
                         break
-
+                
     print("\nTraining complete.")
+    return training_batch_losses, validation_losses, val_accuracies, batch_train, batch_val
 
-# Example usage
-train_model_with_validation(
+###############################
+# Training
+###############################
+
+training_batch_losses, validation_losses, val_accuracies, batch_train, batch_val = train_model_with_validation(
     model=model,
     train_dataloader=train_dataloader,
     val_dataloader=val_dataloader,
     optimizer=optimizer,
     criterion=criterion,
     device=device,
-    num_epochs=3,
-    patience=1
+    num_epochs=6,
+    patience=3
 )
+
+###############################
+# Store training and validation losses for plotting
+###############################
+
+losses = {
+    "training_batch_losses": training_batch_losses,
+    "validation_losses": validation_losses,
+    "batch_train": batch_train,
+    "batch_val": batch_val,
+    "validation_accuracies": val_accuracies,
+}
+
+with open('results/losses.json', 'w') as f:
+    json.dump(losses, f)
