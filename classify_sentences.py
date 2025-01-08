@@ -1,5 +1,6 @@
 import torch
 import json
+import time
 from transformers import BertTokenizer, BertForSequenceClassification
 from transformers import logging
 logging.set_verbosity_error() # To supress the warning message for fine tuning
@@ -10,43 +11,43 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 ############################################
 
 # Load the filtered submissions from the JSON file
-with open('data_preprocess/submissions_dict.json', 'r') as f:
+with open('data_preprocess/submissions_dict.json', 'r', encoding='utf-8') as f:
     submissions_dict = json.load(f)
 
-with open('data_preprocess/sentences_dict.json', 'r') as f:
-    sentences_dict = json.load(f)
+with open('data_preprocess/cuisine_sentences_dict.json', 'r', encoding='utf-8') as f:
+    cuisine_sentences_dict = json.load(f)
 
-cuisine_labels = {cuisine: i for i, cuisine in enumerate(sentences_dict.keys())}
-del sentences_dict  # Remove the sentences_dict to free up memory
+cuisine_labels = {cuisine: i for i, cuisine in enumerate(cuisine_sentences_dict.keys())}
+del cuisine_sentences_dict  # Remove the sentences_dict to free up memory
 
 #############################
 # Cuisine Prediction Function
 #############################
 
-def cuisine_probs(text):
-    inputs = tokenizer_cuisine(text, return_tensors="pt", max_length=512, truncation=True, padding="max_length")
+def cuisine_probs(sentences):
+    inputs = tokenizer_cuisine(sentences, return_tensors="pt", max_length=128, truncation=True, padding="max_length")
     inputs = {key: value.to(device) for key, value in inputs.items()}
 
     with torch.no_grad():
         outputs = BERT_cuisine(**inputs)
         logits = outputs.logits
 
-    probs = torch.nn.functional.softmax(logits, dim=1).to('cpu')
+    probs = torch.nn.functional.softmax(logits, dim=1)
     return probs
 
 #############################
 # Emotion Prediction Function
 #############################
 
-def get_emotions(text):
+def get_emotions(sentences):
     # Tokenize the input text
-    inputs = tokenizer_emotions(text, return_tensors="pt", truncation=True, padding=True).to(device)
+    inputs = tokenizer_emotions(sentences, max_length= 128 , return_tensors="pt", truncation=True, padding=True).to(device)
     
     # Perform forward pass to get logits
     outputs = roBERTa_emotions(**inputs)
     
     # Apply softmax to get probabilities
-    outputs = torch.softmax(outputs.logits, dim=1).detach()[0].unsqueeze(0).to('cpu')
+    outputs = torch.softmax(outputs.logits, dim=1).detach()
  
     return outputs
 
@@ -82,44 +83,63 @@ if __name__ == "__main__":
     for cuisine in cuisine_labels:
         classified_sentences_dict[cuisine] = {'sentences emotions': []}
 
-    def get_cuisine_emotions_and_store(text):
-        # Classify the title
-        text_cuisine_index = torch.argmax(cuisine_probs(text)).item()
-        text_cuisine = list(cuisine_labels.keys())[text_cuisine_index]
-        text_emotions = get_emotions(text).squeeze().tolist()
+    def get_cuisine_emotions_and_store(sentences):
+        # Classify the titles
+        cuisine_probs_batch = cuisine_probs(sentences)
+        emotions_batch = get_emotions(sentences)
 
-        classified_sentences_dict[text_cuisine]['sentences emotions'].append(text_emotions)
+        for i, sent in enumerate(sentences):
+            text_cuisine_index = torch.argmax(cuisine_probs_batch[i]).item()
+            text_cuisine = list(cuisine_labels.keys())[text_cuisine_index]
+            text_emotions = emotions_batch[i].squeeze().tolist()
+
+            classified_sentences_dict[text_cuisine]['sentences emotions'].append(text_emotions)
 
     #############################
     # Compute cuisines probabilities and sentiment scores for submissions
     #############################
 
+    #Shuffle the submissions_dict such that the testing is representative if part of the submissions are used
+    import random
+    random.seed(42)
+    random.shuffle(submissions_dict)
+
     print(f"Total submissions: {len(submissions_dict)}")
 
     counter = 0
-    for sub in submissions_dict:
+    batch_size = 50
+    batch_texts = []
 
-        print(f"Processing submission {counter}", end="\r")
+    start_time = time.time()
+
+    for sub in submissions_dict:
+        estimated_time = ((len(submissions_dict) - counter) * (time.time() - start_time) / counter)/3600  if counter > 0 else 0
+
+        print(f"Processing submission {counter} | Estimated time in hours {estimated_time:.2f}", end="\r")
 
         title = sub['processed_title']
         selftext = sub['processed_selftext']
         comments = sub['processed_comments']
 
-        # Classify and store the title
-        get_cuisine_emotions_and_store(title)
-
-        # Classify and store the selftext if not empty
+        # Collect texts in batches
+        batch_texts.append(title)
         if selftext != '':
-            get_cuisine_emotions_and_store(selftext)
+            batch_texts.append(selftext)
+        batch_texts.extend(comments)
 
-        # Classify the comments
-        for comment in comments:
-            get_cuisine_emotions_and_store(comment)
+        # Process in batches of 10
+        while len(batch_texts) >= batch_size:
+            get_cuisine_emotions_and_store(batch_texts[:batch_size])
+            batch_texts = batch_texts[batch_size:]
 
         counter += 1
 
-        if counter == 100:
+        if counter == 10000:
             break
+
+    # Process any remaining texts
+    if batch_texts:
+        get_cuisine_emotions_and_store(batch_texts)
 
     print("\nDone.")
     with open('results/classified_sentences.json', 'w') as f:

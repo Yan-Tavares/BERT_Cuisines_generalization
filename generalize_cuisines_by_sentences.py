@@ -28,6 +28,11 @@ if __name__ == "__main__":
         for cuisine in classified_sentences:
             print(f"{cuisine}: {classified_sentences[cuisine]['average_emotions'][index]}")
 
+    #Print the number of sentences for each cuisine
+    print("\nNumber of sentences for each cuisine:")
+    for cuisine in classified_sentences:
+        print(f"{cuisine}: {len(classified_sentences[cuisine]['sentences emotions'])}")
+
     # Save the cuisine_emotions_dict to a JSON file
     with open('results/classified_sentences.json', 'w') as f:
         json.dump(classified_sentences, f, indent=4)

@@ -1,13 +1,6 @@
-import ndjson
 import json
-import nltk
-from nltk.corpus import stopwords
-from nltk.tokenize import word_tokenize
-from nltk.stem import WordNetLemmatizer
-import string
 import zipfile
 import os
-import sys
 
 ###################################
 # Unzip the data files
@@ -135,45 +128,6 @@ delete_directory('data_preprocess/unzipped_cooking') # Free up disk space
 cooking_submissions = link_comments_to_submissions(cooking_submissions, cooking_comments)
 del cooking_comments  # Free up memory
 
-def filter_submissions_and_assign_comments(recipes_submissions, recipes_comments):
-    processed_submissions = []
-    for i,sub in enumerate(recipes_submissions):
-        flair = sub['link_flair_text']  # Get the flair value
-
-        if flair is not None:
-            flair = flair.lower()
-
-        processed_submissions.append({
-            'id': sub.get('id'),
-            'title': sub.get('title', ''),
-            'selftext': sub.get('selftext', ''),
-            'flair': flair  # Assign the processed flair value
-        })
-
-        del recipes_submissions[i]  # Free up memory
-
-    print(f"Filtered {len(processed_submissions)} submissions.")
-
-    # Filter relevant fields from comments
-    filtered_comments = []
-    for i, comment in enumerate(recipes_comments):
-        filtered_comments.append({
-            'id': comment.get('id'),
-            'link_id': comment.get('link_id').split('_')[-1],  # Match to submission `id`
-            'body': comment.get('body', '')
-        })
-
-        del recipes_comments[i]  # Free up memory
-        
-
-    print(f"Filtered {len(filtered_comments)} comments.")
-
-    # Combine comments with their corresponding submissions
-    for sub in processed_submissions:
-        sub['comments'] = [comment['body'] for comment in filtered_comments if comment['link_id'] == sub['id']]
-
-    return processed_submissions
-
 ###################################
 # Join the two datasets
 ###################################
@@ -186,6 +140,8 @@ print(f"Joined {len(joined_submissions)} submissions.")
 ###################################
 # Preprocess the text data
 ###################################
+import emoji
+import re
 
 def preprocess_text(text):
     # stop_words = set(stopwords.words('english'))
@@ -200,7 +156,11 @@ def preprocess_text(text):
     # # Remove stopwords and lemmatize
     # words = [lemmatizer.lemmatize(word) for word in words if word not in stop_words]
 
-    # output = ' '.join(words)
+    # Remove URLs using regex
+    text = re.sub(r'http\S+', '', text)
+
+    # Remove emojis
+    text = emoji.replace_emoji(text, replace='')
 
     output = text
 

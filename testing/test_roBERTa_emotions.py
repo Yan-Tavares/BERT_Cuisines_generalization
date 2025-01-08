@@ -9,7 +9,7 @@ with open('data_preprocess/submissions_dict.json', 'r') as f:
 
 def get_emotions(text, model, tokenizer):
     # Tokenize the input text
-    inputs = tokenizer(text, return_tensors="pt", truncation=True, padding=True)
+    inputs = tokenizer(text, max_length = 128,return_tensors="pt", truncation=True, padding=True)
     
     # Perform forward pass to get logits
     outputs = model(**inputs)
@@ -30,15 +30,15 @@ if __name__ == "__main__":
     model = AutoModelForSequenceClassification.from_pretrained(model_name)
 
     # Inspect a specific submission
-    submission_inpection = 16000
+    submission_inpection = 16001
     title = prcessed_submissions[submission_inpection]['processed_title']
-    combined_comments = " ".join(prcessed_submissions[submission_inpection]['processed_comments'])
+    comments = prcessed_submissions[submission_inpection]['processed_comments']
 
     print(f"Submission {submission_inpection} title: {title}")
-    print("Original Comments:")
-    print(prcessed_submissions[submission_inpection]['comments'])
 
     # Get emotions for combined comments
-    emotions = get_emotions(combined_comments, model, tokenizer)
-    print("Emotion Scores:")
-    print(emotions)
+    for idx, comment in enumerate(comments):
+        comment_emotions = get_emotions(comment, model, tokenizer)
+        print(f"\nComment {idx}:")
+        print(comment)
+        print(comment_emotions)

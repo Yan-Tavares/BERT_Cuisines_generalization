@@ -12,14 +12,14 @@ with open('data_preprocess/submissions_dict.json', 'r') as f:
     prcessed_submissions = json.load(f)
 
 # Load sentences_dict from the JSON file
-with open('data_preprocess/sentences_dict.json', 'r') as f:
-    sentences_dict = json.load(f)
+with open('data_preprocess/cuisine_sentences_dict.json', 'r') as f:
+    cuisine_sentences_dict = json.load(f)
 
 print("Sentences dictionary loaded from sentences_dict.json.")
 
 # Get the cuisine labels from the sentences_dict
-cuisine_labels = {cuisine: i for i, cuisine in enumerate(sentences_dict.keys())}
-del sentences_dict  # Remove the sentences_dict to free up memory
+cuisine_labels = {cuisine: i for i, cuisine in enumerate(cuisine_sentences_dict.keys())}
+del cuisine_sentences_dict  # Remove the sentences_dict to free up memory
 
 #############################
 # Set up BERT for testing
@@ -40,7 +40,7 @@ model.to(device)
 #############################
 
 def predict_logits(sentence):
-    inputs = tokenizer(sentence, return_tensors="pt", max_length=512, truncation=True, padding="max_length")
+    inputs = tokenizer(sentence, return_tensors="pt", max_length=128, truncation=True, padding="max_length")
     inputs = {key: value.to(device) for key, value in inputs.items()}
 
     with torch.no_grad():
@@ -66,7 +66,8 @@ from nltk.stem import WordNetLemmatizer
 import string
 
 
-submission_inpection = 16061 #  ####16060
+submission_inpection = 16225
+ #  ####16060
 submission = prcessed_submissions[submission_inpection]
 
 # Classify the title
