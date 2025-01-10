@@ -84,6 +84,7 @@ train_size = dataset_size - validation_size
 
 # Split the dataset
 from torch.utils.data import random_split
+torch.manual_seed(42)
 train_dataset, val_dataset = random_split(dataset, [train_size, validation_size])
 
 # Create DataLoaders for training and validation

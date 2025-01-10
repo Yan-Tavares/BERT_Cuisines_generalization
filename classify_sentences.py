@@ -40,7 +40,7 @@ def cuisine_probs(sentences):
 #############################
 
 def get_emotions(sentences):
-    # Tokenize the input tex
+    # Tokenize the input text
     inputs = tokenizer_emotions(sentences, max_length= 128 , return_tensors="pt", truncation=True, padding=True).to(device)
     
     # Perform forward pass to get logits
@@ -134,8 +134,8 @@ if __name__ == "__main__":
 
         counter += 1
 
-        if counter == 10000:
-            break
+        # if counter == 10000:
+        #     break
 
     # Process any remaining texts
     if batch_texts:

@@ -66,7 +66,7 @@ from nltk.stem import WordNetLemmatizer
 import string
 
 
-submission_inpection = 16225
+submission_inpection = 18010
  #  ####16060
 submission = prcessed_submissions[submission_inpection]
 
