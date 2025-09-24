@@ -1,5 +1,5 @@
 # BERT_Cuisines_generalization
-This research shows training and testing of BERT_Cuisines and also the generalization of the emotions related to the 10 most famous couisines based on data collected from subreddits r/Recipes and r/Cooking.
+This small research assigment shows training and testing of BERT_Cuisines and also the generalization of the emotions related to the 10 most famous couisines based on data collected from subreddits r/Recipes and r/Cooking.
 
 * Collect data from wikepia to train a BERT model to identify cuisines. Make a dictionary with sentences related to each cuisine. Select the relevant articles and use wikiapi to fetch the articles. Store cuisine_sentences_dict.
 * Train BERT to classify the the sentences of wikipedia articles
